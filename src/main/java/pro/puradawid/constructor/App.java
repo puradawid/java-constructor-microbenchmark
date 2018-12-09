@@ -8,57 +8,64 @@ public class App
     private static volatile double t;
 
     public static void main( String[] args ) {
+        PerformanceTest pt;
+
         if ("non-struct".equals(args[0])) {
-            double sum = 0.0;
-            for (int i = 0; i < WARMUP_CYCLES; i++) {
-                testPlainParametersCuboidTime(10000);
-            }
-            for (int i = 0; i < TRIAL_CYCLES; i++) {
-                double singleResult = testPlainParametersCuboidTime(10000);
-                System.out.println(
-                    "Testing data structured " + singleResult);
-                sum += singleResult;
-            }
-            System.out.println("Avg. result = " + (sum / TRIAL_CYCLES));
+            pt = new PlainValuesConstructorPerformanceTest();
         } else {
-            double sum = 0.0;
-            for (int i = 0; i < WARMUP_CYCLES; i++) {
-                testDataStructuredParametersCuboidTime(10000);
-            }
-            for (int i = 0; i < TRIAL_CYCLES; i++) {
-                double singleResult = testDataStructuredParametersCuboidTime(10000);
-                System.out.println(
-                    "Testing data structured " + singleResult);
-                sum += singleResult;
-            }
-            System.out.println("Avg. result = " + (sum / TRIAL_CYCLES));
+            pt = new DataStructuredConstructorPerformanceTest();
         }
+
+        double sum = 0.0;
+
+        for (int i = 0; i < WARMUP_CYCLES; i++) {
+            pt.perform(10000);
+        }
+
+        for (int i = 0; i < TRIAL_CYCLES; i++) {
+            double singleResult = pt.perform(10000);
+            sum += singleResult;
+        }
+
+        System.out.println("Avg. result = " + (sum / TRIAL_CYCLES));
     }
 
-    private static double testPlainParametersCuboidTime(int howManyTimes) {
-        int w = 1;
-        int h = 1;
-        int d = 1;
-        long start = System.nanoTime();
-        for (int i = 0; i < howManyTimes; i++) {
-             PlainParametersCuboid cuboid = new PlainParametersCuboid(w++, h++, d++, 1, 1, 1);
-             t = cuboid.volume();
+    private static abstract class PerformanceTest {
+        double perform(int howManyTimes) {
+            int w = 1;
+            int h = 1;
+            int d = 1;
+            long start = System.nanoTime();
+            for (int i = 0; i < howManyTimes; i++) {
+                t = createAndCalculate(w++, h++, d++);
+            }
+            long stop = System.nanoTime();
+            return (stop - start) / (double) howManyTimes;
         }
-        long stop = System.nanoTime();
-        return (stop - start) / (double) howManyTimes;
+
+        abstract double createAndCalculate(int w, int h, int d);
     }
 
-    private static double testDataStructuredParametersCuboidTime(int howManyTimes) {
-        int w = 1;
-        int h = 1;
-        int d = 1;
-        long start = System.nanoTime();
-        for (int i = 0; i < howManyTimes; i++) {
+    private static class DataStructuredConstructorPerformanceTest extends PerformanceTest {
+
+        @Override
+        double createAndCalculate(int w, int h, int d) {
             DataStructureParametersCuboid
-                cuboid = new DataStructureParametersCuboid(new DataStructureParametersCuboid.Dimension(w++, h++, d++), new DataStructureParametersCuboid.Colour(1, 1, 1));
-            t = cuboid.volume();
+                cuboid = new DataStructureParametersCuboid(
+                new DataStructureParametersCuboid.Dimension(w, h, d),
+                new DataStructureParametersCuboid.Colour(1, 1, 1));
+            return cuboid.volume();
         }
-        long stop = System.nanoTime();
-        return (stop - start) / (double) howManyTimes;
+
+    }
+
+    private static class PlainValuesConstructorPerformanceTest extends PerformanceTest {
+
+        @Override
+        double createAndCalculate(int w, int h, int d) {
+            PlainParametersCuboid cuboid = new PlainParametersCuboid(w, h, d, 1, 1, 1);
+            return cuboid.volume();
+        }
+
     }
 }
